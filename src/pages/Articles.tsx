@@ -14,7 +14,9 @@ import {
     Image as ImageIcon,
     Download,
     Upload,
-    FileJson
+    FileJson,
+    Save,
+    X
 } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Input } from '@/components/ui/input';
@@ -54,6 +56,9 @@ export default function Articles() {
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [isCreateOpen, setIsCreateOpen] = useState(false);
+    const [isEditOpen, setIsEditOpen] = useState(false);
+    const [editingArticle, setEditingArticle] = useState<Article | null>(null);
+
     const [formData, setFormData] = useState({
         title: '',
         content: '',
@@ -110,7 +115,33 @@ export default function Articles() {
         }
     };
 
+    const handleUpdate = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingArticle) return;
+
+        try {
+            setIsLoading(true);
+            await axios.put(`${BACKEND_URL}/api/articles/${editingArticle.id}`, {
+                ...formData,
+                price: formData.price ? parseFloat(formData.price) : null
+            }, {
+                headers: {
+                    'x-tenant-id': user?.id || 'demo_tenant'
+                }
+            });
+            toast.success('Artículo actualizado correctamente');
+            setIsEditOpen(false);
+            setEditingArticle(null);
+            fetchArticles();
+        } catch (error) {
+            toast.error('Error al actualizar artículo');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const handleDelete = async (id: string) => {
+        if (!confirm('¿Estás seguro de que quieres eliminar este artículo?')) return;
         try {
             await axios.delete(`${BACKEND_URL}/api/articles/${id}`, {
                 headers: {
@@ -124,23 +155,16 @@ export default function Articles() {
         }
     };
 
-    const handleMigration = async () => {
-        try {
-            toast.promise(axios.post(`${BACKEND_URL}/api/articles/migrate`, {}, {
-                headers: {
-                    'x-tenant-id': user?.id || 'demo_tenant'
-                }
-            }), {
-                loading: 'Extrayendo de Postgres y moviendo a Supabase...',
-                success: (res: any) => {
-                    fetchArticles();
-                    return `¡Éxito! Migrados ${res.data.count} artículos.`;
-                },
-                error: 'Error en la migración. Asegúrate de haber ejecutado el SQL en Supabase.'
-            });
-        } catch (e) {
-            console.error('Migration error:', e);
-        }
+    const openEditDialog = (article: Article) => {
+        setEditingArticle(article);
+        setFormData({
+            title: article.title || '',
+            content: article.content || '',
+            price: article.price ? article.price.toString() : '',
+            category: article.category || '',
+            image_url: article.image_url || ''
+        });
+        setIsEditOpen(true);
     };
 
     const handleExport = () => {
@@ -333,6 +357,87 @@ export default function Articles() {
                                 </form>
                             </DialogContent>
                         </Dialog>
+
+                        {/* Edit Dialog */}
+                        <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+                            <DialogContent className="sm:max-w-[600px]">
+                                <DialogHeader>
+                                    <DialogTitle>Editar Artículo</DialogTitle>
+                                    <DialogDescription>
+                                        Actualiza la información del producto para tus agentes de IA.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <form onSubmit={handleUpdate} className="space-y-4 pt-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="edit-title">Título</Label>
+                                            <Input
+                                                id="edit-title"
+                                                value={formData.title}
+                                                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                                required
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="edit-category">Categoría</Label>
+                                            <Input
+                                                id="edit-category"
+                                                value={formData.category}
+                                                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="edit-price">Precio</Label>
+                                        <div className="relative">
+                                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                            <Input
+                                                id="edit-price"
+                                                type="number"
+                                                step="0.01"
+                                                className="pl-9"
+                                                value={formData.price}
+                                                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="edit-content">Descripción</Label>
+                                        <Textarea
+                                            id="edit-content"
+                                            className="min-h-[150px]"
+                                            value={formData.content}
+                                            onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="edit-image">URL de Imagen</Label>
+                                        <div className="relative">
+                                            <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                            <Input
+                                                id="edit-image"
+                                                className="pl-9"
+                                                value={formData.image_url}
+                                                onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="flex justify-end gap-3 pt-4">
+                                        <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)}>
+                                            Cancelar
+                                        </Button>
+                                        <Button type="submit" className="bg-gradient-primary">
+                                            Actualizar Cambios
+                                        </Button>
+                                    </div>
+                                </form>
+                            </DialogContent>
+                        </Dialog>
                     </div>
                 </div>
 
@@ -397,53 +502,75 @@ export default function Articles() {
                                     transition={{ delay: index * 0.05 }}
                                 >
                                     <Card className="glass border-border/50 hover:border-primary/30 transition-all duration-300 group overflow-hidden h-full flex flex-col">
-                                        {article.image_url && (
-                                            <div className="h-40 w-full overflow-hidden border-b border-border/50">
+                                        <div className="relative h-44 w-full overflow-hidden border-b border-border/50 bg-muted/50">
+                                            {article.image_url ? (
                                                 <img
                                                     src={article.image_url}
                                                     alt={article.title}
                                                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                                    onError={(e) => (e.currentTarget.style.display = 'none')}
+                                                    onError={(e) => {
+                                                        e.currentTarget.style.display = 'none';
+                                                        e.currentTarget.parentElement?.classList.add('flex', 'items-center', 'justify-center');
+                                                        const icon = document.createElement('div');
+                                                        icon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground/30"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>';
+                                                        e.currentTarget.parentElement?.appendChild(icon.firstChild as Node);
+                                                    }}
                                                 />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center">
+                                                    <BookOpen className="w-12 h-12 text-muted-foreground/20" />
+                                                </div>
+                                            )}
+
+                                            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                                <Button
+                                                    variant="secondary"
+                                                    size="icon"
+                                                    className="h-8 w-8 bg-background/80 backdrop-blur-sm"
+                                                    onClick={() => openEditDialog(article)}
+                                                >
+                                                    <Edit className="w-3.5 h-3.5" />
+                                                </Button>
+                                                <Button
+                                                    variant="destructive"
+                                                    size="icon"
+                                                    className="h-8 w-8 bg-destructive/80 backdrop-blur-sm"
+                                                    onClick={() => handleDelete(article.id)}
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </Button>
                                             </div>
-                                        )}
-                                        <CardContent className="p-6 flex-1 flex flex-col">
-                                            <div className="flex items-start justify-between mb-4">
-                                                <div>
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <Badge className="bg-primary/10 text-primary border-none text-[10px] uppercase font-bold">
+                                        </div>
+
+                                        <CardContent className="p-5 flex-1 flex flex-col">
+                                            <div className="flex items-start justify-between mb-3">
+                                                <div className="space-y-1">
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        <Badge className="bg-primary/10 text-primary border-none text-[9px] uppercase font-bold px-2 py-0">
                                                             {article.category || 'General'}
                                                         </Badge>
                                                         {article.price && (
-                                                            <Badge variant="outline" className="border-green-500/20 text-green-500 text-[10px]">
-                                                                ${article.price}
+                                                            <Badge variant="outline" className="border-green-500/20 text-green-500 text-[9px] px-2 py-0">
+                                                                ${parseFloat(article.price.toString()).toLocaleString()}
                                                             </Badge>
                                                         )}
                                                     </div>
-                                                    <h3 className="font-bold text-lg text-foreground leading-tight">
+                                                    <h3 className="font-bold text-base text-foreground leading-tight line-clamp-1">
                                                         {article.title}
                                                     </h3>
                                                 </div>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                                    onClick={() => handleDelete(article.id)}
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </Button>
                                             </div>
 
-                                            <p className="text-sm text-muted-foreground line-clamp-4 flex-1">
+                                            <p className="text-xs text-muted-foreground line-clamp-3 flex-1 mb-4 leading-relaxed">
                                                 {article.content}
                                             </p>
 
-                                            <div className="mt-6 pt-4 border-t border-border/50 flex items-center justify-between">
-                                                <div className="flex items-center gap-2 text-[10px] text-muted-foreground uppercase font-bold">
-                                                    <Tag className="w-3 h-3" />
+                                            <div className="pt-3 border-t border-border/50 flex items-center justify-between mt-auto">
+                                                <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground uppercase font-medium">
+                                                    <Tag className="w-2.5 h-2.5" />
                                                     ID: {article.id.slice(0, 8)}
                                                 </div>
-                                                <span className="text-[10px] text-muted-foreground">
+                                                <span className="text-[9px] text-muted-foreground font-medium">
                                                     {new Date(article.created_at).toLocaleDateString()}
                                                 </span>
                                             </div>

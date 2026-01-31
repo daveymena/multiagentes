@@ -1,7 +1,8 @@
 import supabase from './src/db/supabase.client.js';
 import logger from './src/utils/logger.js';
 
-const REAL_TENANT_ID = "cmjg5dann0000km6ommqqk7x5";
+// ESTE ES EL ID REAL DETECTADO EN LA BASE DE DATOS PARA EL USUARIO ACTUAL
+const REAL_TENANT_ID = "2c226254-842a-471a-bf10-c0ed2a7e7f1f";
 
 const realData = [
     {
@@ -148,7 +149,10 @@ const realData = [
 
 const insertData = async () => {
     try {
-        logger.info(`Actualizando catálogo con ENLACES EXTERNOS de alta calidad para el usuario: ${REAL_TENANT_ID}...`);
+        logger.info(`RECARGA FINAL con ID CORRECTO (${REAL_TENANT_ID})...`);
+
+        // Limpiar para este ID específico
+        await supabase.from('articles').delete().eq('tenant_id', REAL_TENANT_ID);
 
         const articles = realData.map(item => ({
             title: item.name,
@@ -159,20 +163,13 @@ const insertData = async () => {
             tenant_id: REAL_TENANT_ID
         }));
 
-        const { data, error } = await supabase
-            .from('articles')
-            .upsert(articles, { onConflict: 'tenant_id,title' });
+        const { error } = await supabase.from('articles').insert(articles);
+        if (error) throw error;
 
-        if (error) {
-            console.error('Error de Supabase:', JSON.stringify(error, null, 2));
-            logger.error({ error }, 'Error al insertar datos visuales');
-            process.exit(1);
-        }
-
-        logger.info(`¡Éxito TOTAL! Se han actualizado las imágenes de los 20 artículos usando CDN.`);
+        logger.info(`¡COMPLETADO! 20 artículos insertados para el ID real.`);
         process.exit(0);
     } catch (err) {
-        logger.error({ err }, 'Fallo crítico en el script CDN');
+        logger.error({ err }, 'Fallo en la recarga final');
         process.exit(1);
     }
 };

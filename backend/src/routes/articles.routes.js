@@ -103,4 +103,34 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
+/**
+ * @route PUT /api/articles/:id
+ */
+router.put('/:id', async (req, res) => {
+    try {
+        const tenantId = req.headers['x-tenant-id'] || 'demo_tenant';
+        const { title, content, price, category, image_url } = req.body;
+
+        const { data, error } = await supabase
+            .from('articles')
+            .update({
+                title,
+                content,
+                price,
+                category,
+                image_url
+            })
+            .eq('id', req.params.id)
+            .eq('tenant_id', tenantId)
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.json(data);
+    } catch (error) {
+        logger.error({ error }, 'Error updating article in Supabase');
+        res.status(500).json({ error: error.message });
+    }
+});
+
 export default router;
