@@ -9,6 +9,8 @@ import whatsappRoutes from './src/routes/whatsapp.routes.js';
 import agentsRoutes from './src/routes/agents.routes.js';
 import contactsRoutes from './src/routes/contacts.routes.js';
 import articlesRoutes from './src/routes/articles.routes.js';
+import settingsRoutes from './src/routes/settings.routes.js';
+import conversationsRoutes from './src/routes/conversations.routes.js';
 
 
 import initDb from './src/db/init.js';
@@ -28,7 +30,7 @@ const app = express();
 const httpServer = createServer(app);
 const io = initSocket(httpServer);
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3002;
 
 
 // Middleware de seguridad - Relajado para debug
@@ -68,6 +70,8 @@ app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/agents', agentsRoutes);
 app.use('/api/contacts', contactsRoutes);
 app.use('/api/articles', articlesRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/conversations', conversationsRoutes);
 
 
 

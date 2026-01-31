@@ -40,10 +40,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
-        className="ml-[280px] min-h-screen transition-all duration-300"
-        style={{ marginLeft: sidebarWidth }}
+        className="md:ml-[280px] min-h-screen transition-all duration-300"
       >
-        <div className="p-6">
+        <div className="p-4 md:p-6 pt-16 md:pt-6">
           {children}
         </div>
       </motion.main>

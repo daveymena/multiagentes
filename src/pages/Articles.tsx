@@ -16,7 +16,8 @@ import {
     Upload,
     FileJson,
     Save,
-    X
+    X,
+    Sparkles
 } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Input } from '@/components/ui/input';
@@ -31,6 +32,13 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import axios from 'axios';
@@ -38,8 +46,8 @@ import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 
 const BACKEND_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://127.0.0.1:3001'
-    : `http://${window.location.hostname}:3001`;
+    ? 'http://localhost:3002'
+    : `http://${window.location.hostname}:3002`;
 
 interface Article {
     id: string;
@@ -70,9 +78,7 @@ export default function Articles() {
     const { user } = useAuth();
 
     useEffect(() => {
-        if (user) {
-            fetchArticles();
-        }
+        fetchArticles();
     }, [user]);
 
     const fetchArticles = async () => {
@@ -222,6 +228,27 @@ export default function Articles() {
         a.content?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    const handleAutoImages = async (force: boolean = false) => {
+        try {
+            toast.info(force ? 'Actualizando todas las imágenes...' : 'Buscando imágenes faltantes...');
+            const response = await axios.post(`${BACKEND_URL}/api/articles/auto-fix-images`, {
+                forceAll: force
+            }, {
+                headers: { 'x-tenant-id': user?.id || 'demo_tenant' }
+            });
+
+            if (response.data.processed > 0) {
+                toast.success(`Se actualizaron ${response.data.processed} imágenes`);
+                fetchArticles();
+            } else {
+                toast.info('No se encontraron imágenes para actualizar');
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al procesar imágenes');
+        }
+    };
+
     return (
         <DashboardLayout>
             <div className="space-y-8">
@@ -230,18 +257,28 @@ export default function Articles() {
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
                     >
-                        <h1 className="text-3xl font-display font-bold text-foreground mb-2">
+                        <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground mb-2">
                             Base de Conocimiento
                         </h1>
-                        <p className="text-muted-foreground">
+                        <p className="text-sm md:text-base text-muted-foreground">
                             Gestiona los productos y artículos que tus agentes usarán para responder
                         </p>
                     </motion.div>
 
-                    <div className="flex gap-3">
+                    <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+                        <Button
+                            variant="secondary"
+                            onClick={(e) => handleAutoImages(e.shiftKey)}
+                            className="bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-300 w-full md:w-auto"
+                            title="Clic para imágenes faltantes. Shift+Clic para forzar actualización de todas."
+                        >
+                            <Sparkles className="w-4 h-4 mr-2" />
+                            Auto-Imaginar
+                        </Button>
+
                         <Button
                             variant="outline"
-                            className="border-primary/50 text-foreground hover:bg-primary/10 transition-colors"
+                            className="border-primary/50 text-foreground hover:bg-primary/10 transition-colors w-full md:w-auto"
                             onClick={handleExport}
                             disabled={articles.length === 0}
                         >
@@ -259,7 +296,7 @@ export default function Articles() {
                             />
                             <Button
                                 variant="outline"
-                                className="border-primary/50 text-foreground hover:bg-primary/10 transition-colors"
+                                className="border-primary/50 text-foreground hover:bg-primary/10 transition-colors w-full md:w-auto"
                             >
                                 <Upload className="w-4 h-4 mr-2" />
                                 Importar JSON
@@ -441,14 +478,28 @@ export default function Articles() {
                     </div>
                 </div>
 
-                <div className="relative w-full">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Buscar en la base de conocimientos..."
-                        className="pl-9 bg-background/50 border-border/50 h-12"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
+                <div className="flex flex-col md:flex-row gap-4 items-center">
+                    <div className="relative flex-1 w-full">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Buscar en la base de conocimientos..."
+                            className="pl-9 bg-background/50 border-border/50 h-12"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+
+                    <Select onValueChange={(val) => setSearchQuery(val === 'all' ? '' : val)}>
+                        <SelectTrigger className="w-full md:w-64 h-12 bg-background/50 border-border/50">
+                            <SelectValue placeholder="Filtrar por Categoría" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Todas las Categorías</SelectItem>
+                            {[...new Set(articles.map(a => a.category).filter(Boolean))].map(cat => (
+                                <SelectItem key={cat} value={cat!}>{cat}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
 
                 {isLoading && articles.length === 0 ? (

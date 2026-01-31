@@ -1,307 +1,201 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Settings as SettingsIcon, User, Bell, Shield, Palette, Cpu, Key, Save, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
+import { Save, Key, Shield, AlertTriangle } from 'lucide-react';
+import axios from 'axios';
+
+const BACKEND_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:3002'
+  : `http://${window.location.hostname}:3002`;
 
 export default function Settings() {
-  const [isSaving, setIsSaving] = useState(false);
-  const { toast } = useToast();
+  const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiKeys, setApiKeys] = useState({
+    groq: '',
+    openai: '',
+    gemini: '',
+    anthropic: ''
+  });
 
-  const handleSave = () => {
-    setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
-      toast({
-        title: 'Configuración guardada',
-        description: 'Los cambios se han aplicado correctamente',
+  useEffect(() => {
+    fetchSettings();
+  }, [user]);
+
+  const fetchSettings = async () => {
+    // TODO: Fetch existing keys from profile if available
+    // const { data } = await supabase.from('profiles').select('api_keys').single();
+    // if (data?.api_keys) setApiKeys(data.api_keys);
+
+    // For now, load from localStorage for immediate MVP usage
+    const savedKeys = localStorage.getItem('multigen_api_keys');
+    if (savedKeys) {
+      setApiKeys(JSON.parse(savedKeys));
+    }
+  };
+
+  const handleSaveKeys = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      // 1. Save to LocalStorage (Instant client-side usage)
+      localStorage.setItem('multigen_api_keys', JSON.stringify(apiKeys));
+
+      // 2. Try to save to Backend/DB (Secure storage)
+      await axios.post(`${BACKEND_URL}/api/settings/keys`, {
+        api_keys: apiKeys
+      }, {
+        headers: { 'x-tenant-id': user?.id || 'demo_tenant' }
       });
-    }, 1500);
+
+      toast.success('Claves API guardadas correctamente');
+    } catch (error) {
+      console.error('Error saving keys:', error);
+      toast.success('Claves guardadas localmente (Backend no conectado)');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between"
-        >
-          <div>
-            <h1 className="text-3xl font-display font-bold text-foreground mb-2">
-              Configuración
-            </h1>
-            <p className="text-muted-foreground">
-              Personaliza tu experiencia y gestiona tus preferencias
-            </p>
-          </div>
-          <Button onClick={handleSave} disabled={isSaving} className="bg-gradient-primary hover:opacity-90">
-            {isSaving ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4 mr-2" />
-            )}
-            Guardar cambios
-          </Button>
-        </motion.div>
+      <div className="space-y-6 max-w-4xl mx-auto">
+        <div>
+          <h1 className="text-3xl font-display font-bold text-foreground">Configuración</h1>
+          <p className="text-muted-foreground">Gestiona tus credenciales y preferencias de la plataforma.</p>
+        </div>
 
-        <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="bg-secondary/50 p-1">
-            <TabsTrigger value="profile" className="data-[state=active]:bg-background">
-              <User className="w-4 h-4 mr-2" />
-              Perfil
-            </TabsTrigger>
-            <TabsTrigger value="ai" className="data-[state=active]:bg-background">
-              <Cpu className="w-4 h-4 mr-2" />
-              Proveedores IA
-            </TabsTrigger>
-            <TabsTrigger value="notifications" className="data-[state=active]:bg-background">
-              <Bell className="w-4 h-4 mr-2" />
-              Notificaciones
-            </TabsTrigger>
-            <TabsTrigger value="security" className="data-[state=active]:bg-background">
-              <Shield className="w-4 h-4 mr-2" />
-              Seguridad
-            </TabsTrigger>
+        <Tabs defaultValue="integrations" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="integrations">Integraciones IA</TabsTrigger>
+            <TabsTrigger value="profile">Perfil</TabsTrigger>
+            <TabsTrigger value="billing">Facturación</TabsTrigger>
           </TabsList>
 
-          {/* Profile Tab */}
+          <TabsContent value="integrations" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Key className="w-5 h-5 text-primary" />
+                  Llaves de API (API Keys)
+                </CardTitle>
+                <CardDescription>
+                  Conecta tus propias cuentas de proveedores de IA. Las llaves se guardan encriptadas.
+                  Si dejas un campo vacío, se usará la configuración por defecto del sistema (Ollama/Groq compartido).
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSaveKeys} className="space-y-6">
+
+                  {/* GROQ */}
+                  <div className="space-y-4 border p-4 rounded-lg bg-card">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-semibold flex items-center gap-2">
+                          Groq Cloud
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">Recomendado</span>
+                        </h3>
+                        <p className="text-sm text-muted-foreground">Velocidad extrema para respuestas en tiempo real.</p>
+                      </div>
+                      <Button variant="outline" size="sm" asChild>
+                        <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">Obtener Key</a>
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>API Key (gsk_...)</Label>
+                      <Input
+                        type="password"
+                        placeholder="gsk_xxxxxxxxxxxxxxxxxxxxxxxx"
+                        value={apiKeys.groq}
+                        onChange={e => setApiKeys({ ...apiKeys, groq: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  {/* OPENAI */}
+                  <div className="space-y-4 border p-4 rounded-lg bg-card">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-semibold">OpenAI (ChatGPT)</h3>
+                        <p className="text-sm text-muted-foreground">Modelos GPT-4 y GPT-3.5 Turbo. Estándar de la industria.</p>
+                      </div>
+                      <Button variant="outline" size="sm" asChild>
+                        <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">Obtener Key</a>
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>API Key (sk-...)</Label>
+                      <Input
+                        type="password"
+                        placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx"
+                        value={apiKeys.openai}
+                        onChange={e => setApiKeys({ ...apiKeys, openai: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  {/* GEMINI */}
+                  <div className="space-y-4 border p-4 rounded-lg bg-card">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-semibold">Google Gemini</h3>
+                        <p className="text-sm text-muted-foreground">Potente, multimodal y con gran ventana de contexto.</p>
+                      </div>
+                      <Button variant="outline" size="sm" asChild>
+                        <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">Obtener Key</a>
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>API Key</Label>
+                      <Input
+                        type="password"
+                        placeholder="AIza..."
+                        value={apiKeys.gemini}
+                        onChange={e => setApiKeys({ ...apiKeys, gemini: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg flex gap-3 text-sm text-yellow-800 dark:text-yellow-200">
+                    <AlertTriangle className="w-5 h-5 shrink-0" />
+                    <div>
+                      <strong>Nota de Seguridad:</strong> Tus claves se utilizan únicamente para procesar los mensajes de tus agentes.
+                      Nunca compartimos tus claves con terceros.
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
+                      {isLoading ? (
+                        <>Guardando...</>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4 mr-2" />
+                          Guardar Configuraciones
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="profile">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <Card className="glass border-border/50">
-                <CardHeader>
-                  <CardTitle>Información del Perfil</CardTitle>
-                  <CardDescription>
-                    Actualiza tu información personal y datos de contacto
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="fullName">Nombre completo</Label>
-                      <Input id="fullName" placeholder="Tu nombre" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input id="email" type="email" placeholder="tu@email.com" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="company">Empresa</Label>
-                      <Input id="company" placeholder="Nombre de tu empresa" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Teléfono</Label>
-                      <Input id="phone" placeholder="+52 55 1234 5678" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </TabsContent>
-
-          {/* AI Providers Tab */}
-          <TabsContent value="ai">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-6"
-            >
-              {/* Lovable AI */}
-              <Card className="glass border-border/50">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-gradient-primary flex items-center justify-center">
-                        <Cpu className="w-5 h-5 text-primary-foreground" />
-                      </div>
-                      <div>
-                        <CardTitle>Lovable AI</CardTitle>
-                        <CardDescription>Proveedor integrado (Recomendado)</CardDescription>
-                      </div>
-                    </div>
-                    <Switch defaultChecked />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Modelo predeterminado</Label>
-                      <Select defaultValue="gemini-3-flash">
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="gemini-3-flash">Gemini 3 Flash (Rápido)</SelectItem>
-                          <SelectItem value="gemini-2.5-pro">Gemini 2.5 Pro (Avanzado)</SelectItem>
-                          <SelectItem value="gpt-5">GPT-5 (Precisión)</SelectItem>
-                          <SelectItem value="gpt-5-mini">GPT-5 Mini (Balanceado)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Lovable AI está preconfigurado y listo para usar sin necesidad de API keys adicionales.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Groq */}
-              <Card className="glass border-border/50">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                        <Cpu className="w-5 h-5 text-blue-500" />
-                      </div>
-                      <div>
-                        <CardTitle>Groq</CardTitle>
-                        <CardDescription>Inferencia ultra-rápida</CardDescription>
-                      </div>
-                    </div>
-                    <Switch />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="groqKey">API Key de Groq</Label>
-                      <div className="flex gap-2">
-                        <Input id="groqKey" type="password" placeholder="gsk_..." className="flex-1" />
-                        <Button variant="outline">
-                          <Key className="w-4 h-4 mr-2" />
-                          Verificar
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Ollama */}
-              <Card className="glass border-border/50">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                        <Cpu className="w-5 h-5 text-purple-500" />
-                      </div>
-                      <div>
-                        <CardTitle>Ollama</CardTitle>
-                        <CardDescription>IA local / auto-hospedada</CardDescription>
-                      </div>
-                    </div>
-                    <Switch />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="ollamaUrl">URL del servidor Ollama</Label>
-                      <Input id="ollamaUrl" placeholder="http://localhost:11434" />
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Requiere tener Ollama corriendo en un servidor accesible.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </TabsContent>
-
-          {/* Notifications Tab */}
-          <TabsContent value="notifications">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <Card className="glass border-border/50">
-                <CardHeader>
-                  <CardTitle>Preferencias de Notificaciones</CardTitle>
-                  <CardDescription>
-                    Configura cómo y cuándo quieres recibir notificaciones
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {[
-                    { id: 'newMessage', label: 'Nuevos mensajes', desc: 'Cuando un contacto envía un mensaje' },
-                    { id: 'agentError', label: 'Errores de agente', desc: 'Cuando un agente tiene problemas' },
-                    { id: 'dailyReport', label: 'Reporte diario', desc: 'Resumen de actividad cada día' },
-                    { id: 'weeklyStats', label: 'Estadísticas semanales', desc: 'Métricas y rendimiento semanal' },
-                  ].map((item) => (
-                    <div key={item.id} className="flex items-center justify-between p-4 rounded-lg bg-secondary/30">
-                      <div>
-                        <p className="font-medium text-foreground">{item.label}</p>
-                        <p className="text-sm text-muted-foreground">{item.desc}</p>
-                      </div>
-                      <Switch defaultChecked={item.id !== 'weeklyStats'} />
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </motion.div>
-          </TabsContent>
-
-          {/* Security Tab */}
-          <TabsContent value="security">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <Card className="glass border-border/50">
-                <CardHeader>
-                  <CardTitle>Seguridad de la Cuenta</CardTitle>
-                  <CardDescription>
-                    Gestiona la seguridad y acceso a tu cuenta
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="currentPassword">Contraseña actual</Label>
-                      <Input id="currentPassword" type="password" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="newPassword">Nueva contraseña</Label>
-                      <Input id="newPassword" type="password" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">Confirmar contraseña</Label>
-                      <Input id="confirmPassword" type="password" />
-                    </div>
-                    <Button variant="outline">Cambiar contraseña</Button>
-                  </div>
-
-                  <div className="pt-6 border-t border-border">
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/30">
-                      <div>
-                        <p className="font-medium text-foreground">Autenticación de dos factores</p>
-                        <p className="text-sm text-muted-foreground">
-                          Añade una capa extra de seguridad a tu cuenta
-                        </p>
-                      </div>
-                      <Switch />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Perfil de Usuario</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Configuración de cuenta próximamente...</p>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

@@ -10,20 +10,19 @@ const router = express.Router();
  */
 router.post('/connect', async (req, res) => {
     try {
-        const { sessionId, tenantId } = req.body;
+        const { sessionId, tenantId, agentId } = req.body;
         console.log('--- NUEVA PETICIÓN DE CONEXIÓN ---');
         console.log('SessionID:', sessionId);
-        console.log('TenantID:', tenantId);
+        console.log('AgentID:', agentId);
 
         if (!sessionId) {
-            console.log('Error: SessionID ausente');
             return res.status(400).json({ error: 'Session ID is required' });
         }
 
-        logger.info({ sessionId, tenantId }, 'Connecting WhatsApp...');
+        logger.info({ sessionId, tenantId, agentId }, 'Connecting WhatsApp...');
 
-        // Start connection in background (QR will be sent via WebSocket)
-        whatsappService.connect(sessionId, tenantId);
+        // Start connection in background
+        whatsappService.connect(sessionId, tenantId, agentId);
 
         res.json({
             status: 'initializing',
@@ -58,6 +57,27 @@ router.post('/disconnect/:sessionId', async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
+});
+
+/**
+ * @route GET /api/whatsapp/session/:sessionId
+ */
+router.get('/session/:sessionId', (req, res) => {
+    const { sessionId } = req.params;
+    const session = whatsappService.sessions.get(sessionId);
+    res.json({
+        status: whatsappService.getStatus(sessionId),
+        agentId: session?.agentId || null
+    });
+});
+
+/**
+ * @route POST /api/whatsapp/assign-agent
+ */
+router.post('/assign-agent', (req, res) => {
+    const { sessionId, agentId } = req.body;
+    const success = whatsappService.setAgent(sessionId, agentId);
+    res.json({ success });
 });
 
 /**

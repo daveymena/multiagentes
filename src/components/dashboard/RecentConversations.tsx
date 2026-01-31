@@ -1,10 +1,17 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { MessageSquare, Clock, ArrowRight } from 'lucide-react';
+import { MessageSquare, Clock, ArrowRight, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { useAuth } from '@/hooks/useAuth';
+
+const BACKEND_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:3002'
+  : `http://${window.location.hostname}:3002`;
 
 interface Conversation {
   id: string;
@@ -16,9 +23,6 @@ interface Conversation {
   unread: number;
 }
 
-// Inicialmente vacío porque conectaremos con el backend real en el futuro
-const conversations: Conversation[] = [];
-
 const statusConfig = {
   open: { label: 'Abierta', className: 'bg-success/10 text-success border-success/20' },
   pending: { label: 'Pendiente', className: 'bg-warning/10 text-warning border-warning/20' },
@@ -27,6 +31,28 @@ const statusConfig = {
 
 export function RecentConversations() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+
+  const fetchConversations = async () => {
+    try {
+      const resp = await axios.get(`${BACKEND_URL}/api/conversations`, {
+        headers: { 'x-tenant-id': user?.id || 'demo_tenant' }
+      });
+      setConversations(resp.data.slice(0, 5));
+    } catch (err) {
+      console.error('Error fetching recent conversations', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchConversations();
+    const interval = setInterval(fetchConversations, 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <motion.div
@@ -50,7 +76,12 @@ export function RecentConversations() {
       </div>
 
       <div className="flex-1 overflow-y-auto max-h-[400px]">
-        {conversations.length === 0 ? (
+        {loading ? (
+          <div className="p-12 text-center flex flex-col items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-primary mb-2" />
+            <p className="text-sm text-muted-foreground">Cargando conversaciones...</p>
+          </div>
+        ) : conversations.length === 0 ? (
           <div className="p-12 text-center flex flex-col items-center justify-center">
             <div className="w-16 h-16 rounded-full bg-muted/30 flex items-center justify-center mb-4">
               <MessageSquare className="w-8 h-8 text-muted-foreground/50" />

@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificación de Agentes - MultiGen</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 40px;
+            font-size: 2.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        .status {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        .status-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .status-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 20px;
+        }
+        .status-icon.success { background: #10b981; }
+        .status-icon.error { background: #ef4444; }
+        .status-icon.loading { background: #f59e0b; }
+        .agent-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .agent-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .agent-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        }
+        .agent-header {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+        .agent-icon {
+            font-size: 32px;
+            margin-right: 12px;
+        }
+        .agent-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+        .agent-type {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 4px;
+        }
+        .type-sales { background: #dcfce7; color: #16a34a; }
+        .type-support { background: #dbeafe; color: #2563eb; }
+        .type-services { background: #e0e7ff; color: #6366f1; }
+        .type-marketing { background: #fed7aa; color: #ea580c; }
+        .type-custom { background: #e5e7eb; color: #6b7280; }
+        .agent-description {
+            font-size: 14px;
+            color: #6b7280;
+            line-height: 1.5;
+            margin-top: 10px;
+        }
+        .agent-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-top: 10px;
+        }
+        .status-active {
+            background: #10b981;
+            color: white;
+        }
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: white;
+            font-size: 18px;
+        }
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Verificación de Agentes MultiGen</h1>
+        
+        <div class="status" id="status">
+            <div class="status-item">
+                <div class="status-icon loading">⏳</div>
+                <div>Conectando con el backend...</div>
+            </div>
+        </div>
+
+        <div id="agents-container" class="agent-grid">
+            <div class="loading">Cargando agentes...</div>
+        </div>
+    </div>
+
+    <script>
+        const BACKEND_URL = 'http://localhost:3002';
+        const agentIcons = {
+            'EcoVenta Pro (E-commerce)': '🛍️',
+            'DoctorCitas (Salud)': '🏥',
+            'InmoLead (Bienes Raíces)': '🏠',
+            'ChefBot (Restaurantes)': '🍕',
+            'SoporteTech (Tecnología)': '💻',
+            'CoachDigital (Infoproductos)': '🚀',
+            'AutoLogger (Logística)': '📦',
+            'GlamBot (Belleza/Spa)': '✨',
+            'LawAsist (Legal)': '⚖️',
+            'TutorIA (Educación)': '📚'
+        };
+
+        async function checkAgents() {
+            try {
+                console.log('Fetching agents from:', `${BACKEND_URL}/api/agents`);
+                const response = await fetch(`${BACKEND_URL}/api/agents`);
+                const agents = await response.json();
+                
+                console.log('Received agents:', agents.length, agents);
+
+                // Update status
+                document.getElementById('status').innerHTML = `
+                    <div class="status-item">
+                        <div class="status-icon success">✅</div>
+                        <div>
+                            <strong>Backend conectado</strong><br>
+                            ${agents.length} agentes encontrados
+                        </div>
+                    </div>
+                `;
+
+                // Display agents
+                const container = document.getElementById('agents-container');
+                if (agents.length === 0) {
+                    container.innerHTML = '<div class="error">⚠️ No se encontraron agentes</div>';
+                    return;
+                }
+
+                container.innerHTML = agents.map(agent => `
+                    <div class="agent-card">
+                        <div class="agent-header">
+                            <div class="agent-icon">${agentIcons[agent.name] || '🤖'}</div>
+                            <div style="flex: 1;">
+                                <div class="agent-name">${agent.name}</div>
+                                <span class="agent-type type-${agent.type}">${agent.type}</span>
+                            </div>
+                        </div>
+                        <div class="agent-description">${agent.description.substring(0, 120)}...</div>
+                        <span class="agent-status status-${agent.status}">${agent.status}</span>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('status').innerHTML = `
+                    <div class="status-item">
+                        <div class="status-icon error">❌</div>
+                        <div>
+                            <strong>Error de conexión</strong><br>
+                            ${error.message}
+                        </div>
+                    </div>
+                `;
+                document.getElementById('agents-container').innerHTML = `
+                    <div class="error">
+                        ❌ No se pudo conectar con el backend.<br>
+                        Asegúrate de que el servidor esté corriendo en http://localhost:3002
+                    </div>
+                `;
+            }
+        }
+
+        // Load agents on page load
+        checkAgents();
+
+        // Auto-refresh every 10 seconds
+        setInterval(checkAgents, 10000);
+    </script>
+</body>
+</html>

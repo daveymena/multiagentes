@@ -10,14 +10,24 @@ const router = express.Router();
  */
 router.get('/', async (req, res) => {
     try {
-        const tenantId = req.headers['x-tenant-id'] || 'demo_tenant';
+        // Always use demo_tenant for now so all users see the pre-created agents
+        const tenantId = 'demo_tenant';
+
+        console.log(`\n=== AGENTS GET REQUEST ===`);
+        console.log(`Fetching agents for: ${tenantId}`);
+
         const { data, error } = await supabase
             .from('agents')
             .select('*')
             .eq('tenant_id', tenantId)
             .order('created_at', { ascending: false });
 
-        if (error) throw error;
+        if (error) {
+            console.error('Supabase error:', error);
+            throw error;
+        }
+
+        console.log(`✅ Returning ${data?.length || 0} agents`);
         res.json(data);
     } catch (error) {
         if (error.code === 'PGRST205' || error.message?.includes('schema cache')) {
@@ -34,7 +44,7 @@ router.get('/', async (req, res) => {
  */
 router.post('/', async (req, res) => {
     try {
-        const tenantId = req.headers['x-tenant-id'] || 'demo_tenant';
+        const tenantId = 'demo_tenant';
         const { name, description, type, aiProvider, welcomeMessage } = req.body;
 
         const { data, error } = await supabase
@@ -63,11 +73,71 @@ router.post('/', async (req, res) => {
 });
 
 /**
+ * @route PUT /api/agents/:id
+ * @desc Update an existing agent
+ */
+router.put('/:id', async (req, res) => {
+    try {
+        const tenantId = 'demo_tenant';
+        const { id } = req.params;
+        const { name, description, type, aiProvider, welcomeMessage, status } = req.body;
+
+        const { data, error } = await supabase
+            .from('agents')
+            .update({
+                name,
+                description,
+                type,
+                ai_provider: aiProvider,
+                welcome_message: welcomeMessage,
+                status,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', id)
+            .eq('tenant_id', tenantId)
+            .select()
+            .single();
+
+        if (error) throw error;
+        logger.info({ agentId: id, tenantId }, 'Agent updated in Supabase');
+        res.json(data);
+    } catch (error) {
+        logger.error({ error }, 'Error updating agent');
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * @route PATCH /api/agents/:id/status
+ * @desc Update agent status only
+ */
+router.patch('/:id/status', async (req, res) => {
+    try {
+        const tenantId = 'demo_tenant';
+        const { id } = req.params;
+        const { status } = req.body;
+
+        const { data, error } = await supabase
+            .from('agents')
+            .update({ status })
+            .eq('id', id)
+            .eq('tenant_id', tenantId)
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
  * @route DELETE /api/agents/:id
  */
 router.delete('/:id', async (req, res) => {
     try {
-        const tenantId = req.headers['x-tenant-id'] || 'demo_tenant';
+        const tenantId = 'demo_tenant';
         const { id } = req.params;
         const { error } = await supabase
             .from('agents')

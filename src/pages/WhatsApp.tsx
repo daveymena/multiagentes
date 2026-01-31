@@ -5,17 +5,25 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { io } from 'socket.io-client';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 
 const BACKEND_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-  ? 'http://127.0.0.1:3001'
-  : `http://${window.location.hostname}:3001`;
+  ? 'http://localhost:3002'
+  : `http://${window.location.hostname}:3002`;
 
 export default function WhatsApp() {
   const { user } = useAuth();
@@ -33,6 +41,41 @@ export default function WhatsApp() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [status, setStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
+  const [agents, setAgents] = useState<any[]>([]);
+  const [selectedAgentId, setSelectedAgentId] = useState<string>('');
+  const [activeMessages, setActiveMessages] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchAgents();
+    fetchSessionInfo();
+  }, []);
+
+  const fetchAgents = async () => {
+    try {
+      const resp = await axios.get(`${BACKEND_URL}/api/agents`, {
+        headers: {
+          'x-tenant-id': user?.id || 'demo_tenant'
+        }
+      });
+      setAgents(resp.data);
+      if (resp.data.length > 0 && !selectedAgentId) {
+        setSelectedAgentId(resp.data[0].id);
+      }
+    } catch (err) {
+      console.error('Error fetching agents', err);
+    }
+  };
+
+  const fetchSessionInfo = async () => {
+    try {
+      const resp = await axios.get(`${BACKEND_URL}/api/whatsapp/session/${sessionId}`);
+      if (resp.data.agentId) {
+        setSelectedAgentId(resp.data.agentId);
+      }
+    } catch (err) {
+      console.error('Error fetching session info', err);
+    }
+  };
 
   useEffect(() => {
     if (!sessionId) return;
@@ -53,6 +96,12 @@ export default function WhatsApp() {
       setQrCode(qr);
     });
 
+    socket.on(`message:${sessionId}`, (msg) => {
+      console.log('New message received:', msg);
+      setActiveMessages(prev => [msg, ...prev].slice(0, 50));
+      toast.info(`Nuevo mensaje de ${msg.from.split('@')[0]}`);
+    });
+
     socket.on(`status:${sessionId}`, (newStatus) => {
       console.log('Status update for', sessionId, ':', newStatus);
       setStatus(statusMap[newStatus] || 'disconnected');
@@ -60,17 +109,54 @@ export default function WhatsApp() {
         setStatus('connected');
         setIsConnecting(false);
         setQrCode(null);
+        fetchRecentActivity(); // Cargar historial al conectar
       } else if (newStatus === 'connecting') {
         setIsConnecting(true);
       }
     });
 
+    // Cargar historial si ya está conectado al entrar a la página
+    if (status === 'connected') {
+      fetchRecentActivity();
+    }
+
     return () => {
       socket.off(`qr:${sessionId}`);
       socket.off(`status:${sessionId}`);
+      socket.off(`message:${sessionId}`);
       socket.disconnect();
     };
-  }, [sessionId]);
+  }, [sessionId, status]);
+
+  const fetchRecentActivity = async () => {
+    try {
+      // Obtenemos los últimos 50 mensajes del tenant para mostrar actividad reciente
+      const resp = await axios.get(`${BACKEND_URL}/api/conversations`, {
+        headers: { 'x-tenant-id': user?.id || 'demo_tenant' }
+      });
+
+      // Para cada conversación, traer mensajes (esto es un poco pesado, pero sirve para el log de actividad)
+      // Como alternativa, podríamos tener un endpoint de "actividad_reciente" global
+      const allMessages: any[] = [];
+      for (const conv of resp.data.slice(0, 5)) {
+        const msgResp = await axios.get(`${BACKEND_URL}/api/conversations/${conv.id}/messages`);
+        msgResp.data.forEach((m: any) => {
+          allMessages.push({
+            from: m.sender === 'user' ? conv.contactPhone : 'agent',
+            text: m.content,
+            timestamp: m.timestamp,
+            sender: m.sender
+          });
+        });
+      }
+
+      // Ordenar por tiempo desc
+      const sorted = allMessages.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      setActiveMessages(sorted.slice(0, 50));
+    } catch (err) {
+      console.error('Error fetching recent activity', err);
+    }
+  };
 
   const statusMap: Record<string, 'disconnected' | 'connecting' | 'connected'> = {
     'connected': 'connected',
@@ -98,7 +184,8 @@ export default function WhatsApp() {
       setQrCode(null);
       const response = await axios.post(`${BACKEND_URL}/api/whatsapp/connect`, {
         sessionId,
-        tenantId: 'demo_tenant'
+        tenantId: user?.id || 'demo_tenant',
+        agentId: selectedAgentId
       });
       console.log('Respuesta del servidor:', response.data);
     } catch (error) {
@@ -119,6 +206,21 @@ export default function WhatsApp() {
     }
   };
 
+  const handleAssignAgent = async (id: string) => {
+    setSelectedAgentId(id);
+    if (status === 'connected') {
+      try {
+        await axios.post(`${BACKEND_URL}/api/whatsapp/assign-agent`, {
+          sessionId,
+          agentId: id
+        });
+        toast.success('Agente actualizado para esta sesión');
+      } catch (err) {
+        toast.error('Error al cambiar agente');
+      }
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-8">
@@ -126,10 +228,10 @@ export default function WhatsApp() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <h1 className="text-3xl font-display font-bold text-foreground mb-2">
+          <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground mb-2">
             Conexión WhatsApp
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-sm md:text-base text-muted-foreground">
             Conecta tu número para que tus agentes puedan responder mensajes reales
           </p>
         </motion.div>
@@ -188,21 +290,82 @@ export default function WhatsApp() {
                 </div>
 
                 <div className="space-y-4">
-                  <h4 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Pasos a seguir:</h4>
-                  <ul className="space-y-3">
-                    {[
-                      "Abre WhatsApp en tu teléfono móvil",
-                      "Ve a Configuración > Dispositivos vinculados",
-                      "Escanea el código que aparecerá arriba"
-                    ].map((step, i) => (
-                      <li key={i} className="flex items-start gap-3 text-sm text-muted-foreground">
-                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold">
-                          {i + 1}
-                        </span>
-                        {step}
-                      </li>
-                    ))}
-                  </ul>
+                  <h4 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+                    {status === 'connected' ? 'Actividad en Tiempo Real' : 'Pasos a seguir:'}
+                    {status === 'connected' && (
+                      <Badge variant="outline" className="text-[10px] animate-pulse bg-success/10 text-success border-success/20">
+                        Live
+                      </Badge>
+                    )}
+                  </h4>
+
+                  {status === 'connected' ? (
+                    <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
+                      {activeMessages.length === 0 ? (
+                        <div className="py-8 text-center border-2 border-dashed border-border/50 rounded-xl">
+                          <p className="text-xs text-muted-foreground">Esperando mensajes entrantes...</p>
+                        </div>
+                      ) : (
+                        activeMessages.map((msg, i) => (
+                          <motion.div
+                            key={i}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="p-3 rounded-xl bg-secondary/30 border border-border/50 flex flex-col gap-1"
+                          >
+                            <div className="flex justify-between items-center">
+                              <span className="text-[10px] font-bold text-primary">{msg.from.split('@')[0]}</span>
+                              <span className="text-[10px] text-muted-foreground">{new Date(msg.timestamp).toLocaleTimeString()}</span>
+                            </div>
+                            <p className="text-xs text-foreground line-clamp-2">{msg.text}</p>
+                          </motion.div>
+                        ))
+                      )}
+                    </div>
+                  ) : (
+                    <ul className="space-y-3">
+                      {[
+                        "Abre WhatsApp en tu teléfono móvil",
+                        "Ve a Configuración > Dispositivos vinculados",
+                        "Escanea el código que aparecerá arriba",
+                        "Mantén tu teléfono con conexión estable"
+                      ].map((step, i) => (
+                        <li key={i} className="flex items-start gap-3 text-sm text-muted-foreground">
+                          <span className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold">
+                            {i + 1}
+                          </span>
+                          {step}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
+                    Agente Responsable
+                  </Label>
+                  <Select value={selectedAgentId} onValueChange={handleAssignAgent}>
+                    <SelectTrigger className="w-full bg-secondary/30 border-border/50 h-11">
+                      <SelectValue placeholder="Selecciona un agente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {agents.map(agent => (
+                        <SelectItem key={agent.id} value={agent.id}>
+                          <div className="flex items-center gap-2">
+                            <div className={cn(
+                              "w-2 h-2 rounded-full",
+                              agent.status === 'active' ? "bg-success" : "bg-muted-foreground"
+                            )} />
+                            {agent.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[10px] text-muted-foreground italic">
+                    Este será el agente que responderá automáticamente a los mensajes de esta cuenta.
+                  </p>
                 </div>
 
                 <Button

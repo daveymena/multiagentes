@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Filter, MessageSquare, Clock, Phone, Send, Paperclip, Smile, MoreVertical, User, Bot } from 'lucide-react';
+import { Search, Filter, MessageSquare, Clock, Phone, Send, Paperclip, Smile, MoreVertical, User, Bot, Loader2 } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,12 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import axios from 'axios';
+import { useAuth } from '@/hooks/useAuth';
+
+const BACKEND_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:3002'
+  : `http://${window.location.hostname}:3002`;
 
 interface Message {
   id: string;
@@ -28,8 +34,6 @@ interface Conversation {
   messages: Message[];
 }
 
-const mockConversations: Conversation[] = [];
-
 const statusConfig = {
   open: { label: 'Abierta', className: 'bg-success/10 text-success border-success/20' },
   pending: { label: 'Pendiente', className: 'bg-warning/10 text-warning border-warning/20' },
@@ -37,11 +41,51 @@ const statusConfig = {
 };
 
 export default function Conversations() {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
-
-
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+
+  const fetchConversations = async () => {
+    try {
+      const resp = await axios.get(`${BACKEND_URL}/api/conversations`, {
+        headers: { 'x-tenant-id': user?.id || 'demo_tenant' }
+      });
+      setConversations(resp.data);
+    } catch (err) {
+      console.error('Error fetching conversations', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchMessages = async (convId: string) => {
+    try {
+      const resp = await axios.get(`${BACKEND_URL}/api/conversations/${convId}/messages`);
+      setConversations(prev => prev.map(c =>
+        c.id === convId ? { ...c, messages: resp.data } : c
+      ));
+      if (selectedConversation?.id === convId) {
+        setSelectedConversation(prev => prev ? { ...prev, messages: resp.data } : null);
+      }
+    } catch (err) {
+      console.error('Error fetching messages', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchConversations();
+    const interval = setInterval(fetchConversations, 10000); // Polling cada 10s
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (selectedConversation) {
+      fetchMessages(selectedConversation.id);
+    }
+  }, [selectedConversation?.id]);
 
   return (
     <DashboardLayout>
@@ -65,11 +109,16 @@ export default function Conversations() {
           {/* Conversations */}
           <ScrollArea className="flex-1">
             <div className="divide-y divide-border/50">
-              {mockConversations.length === 0 ? (
+              {loading ? (
+                <div className="p-8 text-center flex flex-col items-center gap-2">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Cargando...</p>
+                </div>
+              ) : conversations.length === 0 ? (
                 <div className="p-8 text-center">
                   <p className="text-sm text-muted-foreground">No hay conversaciones activas</p>
                 </div>
-              ) : mockConversations.map((conversation) => (
+              ) : conversations.map((conversation) => (
                 <motion.button
                   key={conversation.id}
                   initial={{ opacity: 0 }}

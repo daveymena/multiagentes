@@ -13,10 +13,11 @@ import {
 import { cn } from '@/lib/utils';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 
 const BACKEND_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-  ? 'http://127.0.0.1:3001'
-  : `http://${window.location.hostname}:3001`;
+  ? 'http://localhost:3002'
+  : `http://${window.location.hostname}:3002`;
 
 interface Agent {
   id: string;
@@ -32,18 +33,28 @@ const statusConfig = {
 };
 
 export function AgentsList() {
+  const { user } = useAuth();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchAgents();
-  }, []);
+  }, [user]);
 
   const fetchAgents = async () => {
     try {
-      const response = await axios.get(`${BACKEND_URL}/api/agents`);
-      setAgents(response.data);
+      console.log('[AgentsList] Fetching agents...');
+      const response = await axios.get(`${BACKEND_URL}/api/agents`, {
+        headers: {
+          'x-tenant-id': user?.id || 'demo_tenant'
+        }
+      });
+      console.log('[AgentsList] Received agents:', response.data.length);
+
+      if (Array.isArray(response.data)) {
+        setAgents(response.data);
+      }
     } catch (error) {
       console.error('Error fetching agents:', error);
     } finally {
@@ -52,12 +63,7 @@ export function AgentsList() {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: 0.4 }}
-      className="rounded-2xl glass border border-border/50 overflow-hidden h-full flex flex-col"
-    >
+    <div className="rounded-2xl glass border border-border/50 overflow-hidden h-full flex flex-col">
       <div className="p-6 border-b border-border/50">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -88,11 +94,8 @@ export function AgentsList() {
         ) : (
           <div className="divide-y divide-border/50">
             {agents.map((agent, index) => (
-              <motion.div
+              <div
                 key={agent.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.3, delay: 0.1 * index }}
                 className="p-4 hover:bg-muted/30 transition-colors group"
               >
                 <div className="flex items-center gap-4">
@@ -132,11 +135,11 @@ export function AgentsList() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 }

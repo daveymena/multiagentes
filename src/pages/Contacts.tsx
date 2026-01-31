@@ -26,8 +26,8 @@ import axios from 'axios';
 import { toast } from 'sonner';
 
 const BACKEND_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://127.0.0.1:3001'
-    : `http://${window.location.hostname}:3001`;
+    ? 'http://localhost:3002'
+    : `http://${window.location.hostname}:3002`;
 
 interface Contact {
     id: string;
@@ -191,10 +191,22 @@ export default function Contacts() {
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                    <Button variant="outline" className="w-full md:w-auto">
-                        <Filter className="w-4 h-4 mr-2" />
-                        Filtros
-                    </Button>
+
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="w-full md:w-auto">
+                                <Filter className="w-4 h-4 mr-2" />
+                                Filtrar por Etiqueta
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem onClick={() => setSearchQuery('')}>Todas</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setSearchQuery('vip')}>VIP</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setSearchQuery('lead')}>Leads</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setSearchQuery('soporte')}>Soporte</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setSearchQuery('ventas')}>Ventas</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
 
                 {isLoading && contacts.length === 0 ? (
