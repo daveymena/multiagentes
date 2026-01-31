@@ -9,7 +9,7 @@ const realData = [
         "description": "💥Ha llegado el Ultra MegaPack Golden de Cursos…\n\n💥 ¡Una colección ÉPICA con más de 1000 cursos de alto valor!\n\n🎓 Aprende lo que siempre quisiste:\n📊 Marketing\n💻 Programación\n🎨 Diseño gráfico\n📈 Finanzas\n🧠 Desarrollo personal\n🌎 Idiomas y MUCHO más...\n\n🎯 TODO en un solo pack…\n✔️ Sin mensualidades\n✔️ Sin complicaciones\n✔️ Acceso inmediato y de por vida\n\n💰 Y lo mejor…\nPor solo 15 dólares o 65 mil pesos en Colombia.\nSí, leíste bien… ¡TODOS los cursos por menos de lo que vale una salida a comer!\n\n📥 Recíbelos directo en tu correo o WhatsApp\n🎁 BONUS: Incluye material descargable, certificados y asesoría.\n\n⏳ Las oportunidades no esperan.\nToma la decisión hoy y empieza a cambiar tu vida.\n\n👇 Haz clic ahora y consigue tu acceso al Ultra MegaPack Golden de Cursos.",
         "price": 60000,
         "category": "DIGITAL",
-        "images": ["/assets/golden.png"]
+        "images": ["https://images.unsplash.com/photo-1589412151025-06a978f67e0e?auto=format&fit=crop&w=800&q=80"]
     },
     {
         "name": "MEGA PACK COMPLETO - 81 Cursos Profesionales",
@@ -23,7 +23,7 @@ const realData = [
         "description": "Cursos completos de Word, Excel, PowerPoint y Access desde básico hasta avanzado",
         "price": 20000,
         "category": "DIGITAL",
-        "images": ["/assets/office.png"]
+        "images": ["https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=800&q=80"]
     },
     {
         "name": "Impresora Brother Multifuncional MFC-T4500DW",
@@ -58,14 +58,14 @@ const realData = [
         "description": "Preparación universitaria especializada en psicología",
         "price": 20000,
         "category": "DIGITAL",
-        "images": ["/assets/psicologia.png"]
+        "images": ["https://images.unsplash.com/photo-1521791136064-7986c2959213?auto=format&fit=crop&w=800&q=80"]
     },
     {
         "name": "Mega Pack 29: Curso Resina",
         "description": "Trabajo con resinas y manualidades profesionales",
         "price": 20000,
         "category": "DIGITAL",
-        "images": ["/assets/resina.png"]
+        "images": ["https://images.unsplash.com/photo-1596461404969-9fc7c19906d3?auto=format&fit=crop&w=800&q=80"]
     },
     {
         "name": "Portatil Acer Al15-41p-R8f7 Amd Ryzen 7 7500u Ram 16gb Ddr4 1tb Ssd Pantalla 15.6 Fhd Ips",
@@ -121,7 +121,7 @@ const realData = [
         "description": "Planos detallados para fabricación de muebles",
         "price": 20000,
         "category": "DIGITAL",
-        "images": ["/assets/melamina.png"]
+        "images": ["https://images.unsplash.com/photo-1533090161767-e6ffed986c88?auto=format&fit=crop&w=800&q=80"]
     },
     {
         "name": "Mega Pack 27: Cursos MultiProfesiones",
@@ -148,7 +148,7 @@ const realData = [
 
 const insertData = async () => {
     try {
-        logger.info(`Actualizando base de conocimiento con IMÁGENES ÚNICAS para el usuario: ${REAL_TENANT_ID}...`);
+        logger.info(`Actualizando catálogo con ENLACES EXTERNOS de alta calidad para el usuario: ${REAL_TENANT_ID}...`);
 
         const articles = realData.map(item => ({
             title: item.name,
@@ -169,10 +169,10 @@ const insertData = async () => {
             process.exit(1);
         }
 
-        logger.info(`¡Éxito VISUAL! Se han actualizado las imágenes de los 20 artículos.`);
+        logger.info(`¡Éxito TOTAL! Se han actualizado las imágenes de los 20 artículos usando CDN.`);
         process.exit(0);
     } catch (err) {
-        logger.error({ err }, 'Fallo crítico en el script de actualización visual');
+        logger.error({ err }, 'Fallo crítico en el script CDN');
         process.exit(1);
     }
 };
