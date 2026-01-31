@@ -9,21 +9,21 @@ const realData = [
         "description": "💥Ha llegado el Ultra MegaPack Golden de Cursos…\n\n💥 ¡Una colección ÉPICA con más de 1000 cursos de alto valor!\n\n🎓 Aprende lo que siempre quisiste:\n📊 Marketing\n💻 Programación\n🎨 Diseño gráfico\n📈 Finanzas\n🧠 Desarrollo personal\n🌎 Idiomas y MUCHO más...\n\n🎯 TODO en un solo pack…\n✔️ Sin mensualidades\n✔️ Sin complicaciones\n✔️ Acceso inmediato y de por vida\n\n💰 Y lo mejor…\nPor solo 15 dólares o 65 mil pesos en Colombia.\nSí, leíste bien… ¡TODOS los cursos por menos de lo que vale una salida a comer!\n\n📥 Recíbelos directo en tu correo o WhatsApp\n🎁 BONUS: Incluye material descargable, certificados y asesoría.\n\n⏳ Las oportunidades no esperan.\nToma la decisión hoy y empieza a cambiar tu vida.\n\n👇 Haz clic ahora y consigue tu acceso al Ultra MegaPack Golden de Cursos.",
         "price": 60000,
         "category": "DIGITAL",
-        "images": ["https://megapack-nu.vercel.app/supermegapack.jpg"]
+        "images": ["/assets/golden.png"]
     },
     {
         "name": "MEGA PACK COMPLETO - 81 Cursos Profesionales",
         "description": "🎓 MEGA PACK COMPLETO - 81 Cursos Profesionales\n\n✅ Acceso de por vida\n✅ Actualizaciones incluidas\n✅ Entrega inmediata por Google Drive\n\nIncluye: Diseño Gráfico, Marketing Digital, Programación, Excel, Inglés, Hacking Ético, Fotografía, y 74 cursos más!",
         "price": 60000,
         "category": "DIGITAL",
-        "images": ["https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=800&q=80"]
+        "images": ["https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80"]
     },
     {
         "name": "Mega Pack 02: Cursos Microsoft Office",
         "description": "Cursos completos de Word, Excel, PowerPoint y Access desde básico hasta avanzado",
         "price": 20000,
         "category": "DIGITAL",
-        "images": ["https://images.unsplash.com/photo-1493612276216-9c590746f412?auto=format&fit=crop&w=800&q=80"]
+        "images": ["/assets/office.png"]
     },
     {
         "name": "Impresora Brother Multifuncional MFC-T4500DW",
@@ -58,14 +58,14 @@ const realData = [
         "description": "Preparación universitaria especializada en psicología",
         "price": 20000,
         "category": "DIGITAL",
-        "images": ["https://images.unsplash.com/photo-1493612276216-9c590746f412?auto=format&fit=crop&w=800&q=80"]
+        "images": ["/assets/psicologia.png"]
     },
     {
         "name": "Mega Pack 29: Curso Resina",
         "description": "Trabajo con resinas y manualidades profesionales",
         "price": 20000,
         "category": "DIGITAL",
-        "images": ["https://images.unsplash.com/photo-1481487484168-9b930d5b7d9f?auto=format&fit=crop&w=800&q=80"]
+        "images": ["/assets/resina.png"]
     },
     {
         "name": "Portatil Acer Al15-41p-R8f7 Amd Ryzen 7 7500u Ram 16gb Ddr4 1tb Ssd Pantalla 15.6 Fhd Ips",
@@ -114,21 +114,21 @@ const realData = [
         "description": "Álbumes digitales especializados y de colección",
         "price": 20000,
         "category": "DIGITAL",
-        "images": ["https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=800&q=80"]
+        "images": ["https://images.unsplash.com/photo-1544391496-1ca7c97457cd?auto=format&fit=crop&w=800&q=80"]
     },
     {
         "name": "Mega Pack 31: 550 Planos de Muebles de Melamina",
         "description": "Planos detallados para fabricación de muebles",
         "price": 20000,
         "category": "DIGITAL",
-        "images": ["https://images.unsplash.com/photo-1493612276216-9c590746f412?auto=format&fit=crop&w=800&q=80"]
+        "images": ["/assets/melamina.png"]
     },
     {
         "name": "Mega Pack 27: Cursos MultiProfesiones",
         "description": "Diversos oficios y profesiones en un solo pack",
         "price": 20000,
         "category": "DIGITAL",
-        "images": ["https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=800&q=80"]
+        "images": ["https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800&q=80"]
     },
     {
         "name": "Portatil Asus Vivobook 16 X1605va-Mb1235 Intel Ci7-13620h Ram 16gb Ddr5 512gb Ssd Pantalla 16.0",
@@ -148,7 +148,7 @@ const realData = [
 
 const insertData = async () => {
     try {
-        logger.info(`Iniciando carga COMPLETA de base de conocimiento (20 artículos) para el usuario: ${REAL_TENANT_ID}...`);
+        logger.info(`Actualizando base de conocimiento con IMÁGENES ÚNICAS para el usuario: ${REAL_TENANT_ID}...`);
 
         const articles = realData.map(item => ({
             title: item.name,
@@ -165,14 +165,14 @@ const insertData = async () => {
 
         if (error) {
             console.error('Error de Supabase:', JSON.stringify(error, null, 2));
-            logger.error({ error }, 'Error al insertar datos completos');
+            logger.error({ error }, 'Error al insertar datos visuales');
             process.exit(1);
         }
 
-        logger.info(`¡Éxito TOTAL! Se insertaron/actualizaron ${articles.length} artículos reales en Supabase.`);
+        logger.info(`¡Éxito VISUAL! Se han actualizado las imágenes de los 20 artículos.`);
         process.exit(0);
     } catch (err) {
-        logger.error({ err }, 'Fallo crítico en el script de carga completa');
+        logger.error({ err }, 'Fallo crítico en el script de actualización visual');
         process.exit(1);
     }
 };
