@@ -11,7 +11,10 @@ import {
     Tag,
     DollarSign,
     BookOpen,
-    Image as ImageIcon
+    Image as ImageIcon,
+    Download,
+    Upload,
+    FileJson
 } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Input } from '@/components/ui/input';
@@ -30,6 +33,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import axios from 'axios';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
 
 const BACKEND_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://127.0.0.1:3001'
@@ -58,14 +62,22 @@ export default function Articles() {
         image_url: ''
     });
 
+    const { user } = useAuth();
+
     useEffect(() => {
-        fetchArticles();
-    }, []);
+        if (user) {
+            fetchArticles();
+        }
+    }, [user]);
 
     const fetchArticles = async () => {
         try {
             setIsLoading(true);
-            const response = await axios.get(`${BACKEND_URL}/api/articles`);
+            const response = await axios.get(`${BACKEND_URL}/api/articles`, {
+                headers: {
+                    'x-tenant-id': user?.id || 'demo_tenant'
+                }
+            });
             setArticles(response.data);
         } catch (error) {
             console.error('Error fetching articles:', error);
@@ -82,6 +94,10 @@ export default function Articles() {
             await axios.post(`${BACKEND_URL}/api/articles`, {
                 ...formData,
                 price: formData.price ? parseFloat(formData.price) : null
+            }, {
+                headers: {
+                    'x-tenant-id': user?.id || 'demo_tenant'
+                }
             });
             toast.success('Información añadida a la base de conocimiento');
             setIsCreateOpen(false);
@@ -96,7 +112,11 @@ export default function Articles() {
 
     const handleDelete = async (id: string) => {
         try {
-            await axios.delete(`${BACKEND_URL}/api/articles/${id}`);
+            await axios.delete(`${BACKEND_URL}/api/articles/${id}`, {
+                headers: {
+                    'x-tenant-id': user?.id || 'demo_tenant'
+                }
+            });
             toast.success('Información eliminada');
             fetchArticles();
         } catch (error) {
@@ -106,7 +126,11 @@ export default function Articles() {
 
     const handleMigration = async () => {
         try {
-            toast.promise(axios.post(`${BACKEND_URL}/api/articles/migrate`), {
+            toast.promise(axios.post(`${BACKEND_URL}/api/articles/migrate`, {}, {
+                headers: {
+                    'x-tenant-id': user?.id || 'demo_tenant'
+                }
+            }), {
                 loading: 'Extrayendo de Postgres y moviendo a Supabase...',
                 success: (res: any) => {
                     fetchArticles();
@@ -117,6 +141,55 @@ export default function Articles() {
         } catch (e) {
             console.error('Migration error:', e);
         }
+    };
+
+    const handleExport = () => {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(articles, null, 2));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", `articulos_${new Date().toISOString().split('T')[0]}.json`);
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+        toast.success('Catálogo exportado correctamente');
+    };
+
+    const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const json = JSON.parse(event.target?.result as string);
+                const items = Array.isArray(json) ? json : [json];
+
+                toast.promise(
+                    Promise.all(items.map(item =>
+                        axios.post(`${BACKEND_URL}/api/articles`, {
+                            title: item.title || item.name,
+                            content: item.content || item.description,
+                            price: item.price,
+                            category: item.category,
+                            image_url: item.image_url || (item.images?.[0])
+                        }, {
+                            headers: { 'x-tenant-id': user?.id || 'demo_tenant' }
+                        })
+                    )),
+                    {
+                        loading: 'Importando base de conocimientos...',
+                        success: () => {
+                            fetchArticles();
+                            return `¡Éxito! Se han importado ${items.length} artículos.`;
+                        },
+                        error: 'Error al importar algunos artículos.'
+                    }
+                );
+            } catch (err) {
+                toast.error('Archivo JSON inválido');
+            }
+        };
+        reader.readAsText(file);
     };
 
     const filteredArticles = articles.filter(a =>
@@ -144,12 +217,30 @@ export default function Articles() {
                     <div className="flex gap-3">
                         <Button
                             variant="outline"
-                            className="border-primary/50 text-primary hover:bg-primary/10 transition-colors"
-                            onClick={handleMigration}
+                            className="border-primary/50 text-foreground hover:bg-primary/10 transition-colors"
+                            onClick={handleExport}
+                            disabled={articles.length === 0}
                         >
-                            <ExternalLink className="w-4 h-4 mr-2" />
-                            Migrar de Postgres
+                            <Download className="w-4 h-4 mr-2" />
+                            Exportar
                         </Button>
+
+                        <div className="relative">
+                            <input
+                                type="file"
+                                accept=".json"
+                                onChange={handleImport}
+                                className="absolute inset-0 opacity-0 cursor-pointer"
+                                id="import-json"
+                            />
+                            <Button
+                                variant="outline"
+                                className="border-primary/50 text-foreground hover:bg-primary/10 transition-colors"
+                            >
+                                <Upload className="w-4 h-4 mr-2" />
+                                Importar JSON
+                            </Button>
+                        </div>
 
                         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                             <DialogTrigger asChild>
