@@ -10,8 +10,13 @@ import Dashboard from "./pages/Dashboard";
 import Agents from "./pages/Agents";
 import Conversations from "./pages/Conversations";
 import WhatsApp from "./pages/WhatsApp";
+import Analytics from "./pages/Analytics";
+import Contacts from "./pages/Contacts";
+import Automations from "./pages/Automations";
+import Articles from "./pages/Articles";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+
 
 const queryClient = new QueryClient();
 
@@ -29,10 +34,13 @@ const App = () => (
             <Route path="/agents" element={<Agents />} />
             <Route path="/conversations" element={<Conversations />} />
             <Route path="/whatsapp" element={<WhatsApp />} />
-            <Route path="/automations" element={<Dashboard />} />
-            <Route path="/analytics" element={<Dashboard />} />
-            <Route path="/contacts" element={<Dashboard />} />
+            <Route path="/automations" element={<Automations />} />
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/contacts" element={<Contacts />} />
+            <Route path="/articles" element={<Articles />} />
             <Route path="/settings" element={<Settings />} />
+
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

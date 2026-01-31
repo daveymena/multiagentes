@@ -28,54 +28,7 @@ interface Conversation {
   messages: Message[];
 }
 
-const mockConversations: Conversation[] = [
-  {
-    id: '1',
-    contactName: 'María García',
-    contactPhone: '+52 55 1234 5678',
-    agentName: 'Agente de Ventas',
-    lastMessage: 'Me interesa el plan premium, ¿cuál es el precio?',
-    time: 'Hace 2 min',
-    status: 'open',
-    unread: 3,
-    messages: [
-      { id: '1', content: '¡Hola! Bienvenida a nuestra tienda. ¿En qué puedo ayudarte hoy?', sender: 'agent', timestamp: '10:30' },
-      { id: '2', content: 'Hola, me gustaría saber más sobre sus planes', sender: 'user', timestamp: '10:31' },
-      { id: '3', content: 'Con gusto te ayudo. Tenemos tres planes disponibles: Básico, Pro y Premium. ¿Cuál te interesa conocer?', sender: 'agent', timestamp: '10:31' },
-      { id: '4', content: 'Me interesa el plan premium, ¿cuál es el precio?', sender: 'user', timestamp: '10:32' },
-    ]
-  },
-  {
-    id: '2',
-    contactName: 'Carlos López',
-    contactPhone: '+52 55 8765 4321',
-    agentName: 'Soporte Técnico',
-    lastMessage: 'El problema ya fue resuelto, gracias!',
-    time: 'Hace 15 min',
-    status: 'closed',
-    unread: 0,
-    messages: [
-      { id: '1', content: 'Hola, tengo un problema con mi pedido', sender: 'user', timestamp: '09:15' },
-      { id: '2', content: 'Lamento escuchar eso. ¿Podrías darme tu número de pedido?', sender: 'agent', timestamp: '09:15' },
-      { id: '3', content: 'El problema ya fue resuelto, gracias!', sender: 'user', timestamp: '09:30' },
-    ]
-  },
-  {
-    id: '3',
-    contactName: 'Ana Martínez',
-    contactPhone: '+52 55 2468 1357',
-    agentName: 'Asistente de Citas',
-    lastMessage: '¿Tienen disponibilidad para el viernes?',
-    time: 'Hace 1 hora',
-    status: 'pending',
-    unread: 1,
-    messages: [
-      { id: '1', content: 'Hola, me gustaría agendar una cita', sender: 'user', timestamp: '08:00' },
-      { id: '2', content: '¡Claro! ¿Qué día te gustaría?', sender: 'agent', timestamp: '08:01' },
-      { id: '3', content: '¿Tienen disponibilidad para el viernes?', sender: 'user', timestamp: '08:05' },
-    ]
-  }
-];
+const mockConversations: Conversation[] = [];
 
 const statusConfig = {
   open: { label: 'Abierta', className: 'bg-success/10 text-success border-success/20' },
@@ -84,7 +37,9 @@ const statusConfig = {
 };
 
 export default function Conversations() {
-  const [selectedConversation, setSelectedConversation] = useState<Conversation>(mockConversations[0]);
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+
+
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -110,7 +65,11 @@ export default function Conversations() {
           {/* Conversations */}
           <ScrollArea className="flex-1">
             <div className="divide-y divide-border/50">
-              {mockConversations.map((conversation) => (
+              {mockConversations.length === 0 ? (
+                <div className="p-8 text-center">
+                  <p className="text-sm text-muted-foreground">No hay conversaciones activas</p>
+                </div>
+              ) : mockConversations.map((conversation) => (
                 <motion.button
                   key={conversation.id}
                   initial={{ opacity: 0 }}
@@ -118,7 +77,7 @@ export default function Conversations() {
                   onClick={() => setSelectedConversation(conversation)}
                   className={cn(
                     "w-full p-4 text-left hover:bg-muted/30 transition-colors",
-                    selectedConversation.id === conversation.id && "bg-muted/50"
+                    selectedConversation?.id === conversation.id && "bg-muted/50"
                   )}
                 >
                   <div className="flex items-start gap-3">
@@ -160,99 +119,115 @@ export default function Conversations() {
               ))}
             </div>
           </ScrollArea>
+
         </div>
 
         {/* Chat Area */}
         <div className="flex-1 flex flex-col">
-          {/* Chat Header */}
-          <div className="p-4 border-b border-border/50 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Avatar className="w-10 h-10 border-2 border-primary/20">
-                <AvatarFallback className="bg-primary/10 text-primary font-medium">
-                  {selectedConversation.contactName.split(' ').map(n => n[0]).join('')}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <h3 className="font-medium text-foreground">{selectedConversation.contactName}</h3>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Phone className="w-3 h-3" />
-                  {selectedConversation.contactPhone}
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className={cn("text-xs", statusConfig[selectedConversation.status].className)}>
-                {statusConfig[selectedConversation.status].label}
-              </Badge>
-              <Button variant="ghost" size="icon">
-                <MoreVertical className="w-5 h-5" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Messages */}
-          <ScrollArea className="flex-1 p-4">
-            <div className="space-y-4">
-              {selectedConversation.messages.map((message, index) => (
-                <motion.div
-                  key={message.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.05 * index }}
-                  className={cn(
-                    "flex gap-3 max-w-[80%]",
-                    message.sender === 'agent' ? 'ml-0' : 'ml-auto flex-row-reverse'
-                  )}
-                >
-                  <Avatar className="w-8 h-8 flex-shrink-0">
-                    <AvatarFallback className={cn(
-                      message.sender === 'agent' 
-                        ? "bg-gradient-primary text-primary-foreground" 
-                        : "bg-secondary text-foreground"
-                    )}>
-                      {message.sender === 'agent' ? <Bot className="w-4 h-4" /> : <User className="w-4 h-4" />}
+          {selectedConversation ? (
+            <>
+              {/* Chat Header */}
+              <div className="p-4 border-b border-border/50 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <Avatar className="w-10 h-10 border-2 border-primary/20">
+                    <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                      {selectedConversation.contactName.split(' ').map(n => n[0]).join('')}
                     </AvatarFallback>
                   </Avatar>
-                  <div className={cn(
-                    "rounded-2xl px-4 py-3",
-                    message.sender === 'agent' 
-                      ? "bg-secondary text-foreground rounded-tl-none" 
-                      : "bg-primary text-primary-foreground rounded-tr-none"
-                  )}>
-                    <p className="text-sm">{message.content}</p>
-                    <span className={cn(
-                      "text-xs mt-1 block",
-                      message.sender === 'agent' ? "text-muted-foreground" : "text-primary-foreground/70"
-                    )}>
-                      {message.timestamp}
-                    </span>
+                  <div>
+                    <h3 className="font-medium text-foreground">{selectedConversation.contactName}</h3>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Phone className="w-3 h-3" />
+                      {selectedConversation.contactPhone}
+                    </div>
                   </div>
-                </motion.div>
-              ))}
-            </div>
-          </ScrollArea>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className={cn("text-xs", statusConfig[selectedConversation.status].className)}>
+                    {statusConfig[selectedConversation.status].label}
+                  </Badge>
+                  <Button variant="ghost" size="icon">
+                    <MoreVertical className="w-5 h-5" />
+                  </Button>
+                </div>
+              </div>
 
-          {/* Message Input */}
-          <div className="p-4 border-t border-border/50">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                <Paperclip className="w-5 h-5" />
-              </Button>
-              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                <Smile className="w-5 h-5" />
-              </Button>
-              <Input
-                placeholder="Escribe un mensaje..."
-                value={messageInput}
-                onChange={(e) => setMessageInput(e.target.value)}
-                className="flex-1"
-              />
-              <Button className="bg-gradient-primary hover:opacity-90">
-                <Send className="w-5 h-5" />
-              </Button>
+              {/* Messages */}
+              <ScrollArea className="flex-1 p-4">
+                <div className="space-y-4">
+                  {selectedConversation.messages.map((message, index) => (
+                    <motion.div
+                      key={message.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.05 * index }}
+                      className={cn(
+                        "flex gap-3 max-w-[80%]",
+                        message.sender === 'agent' ? 'ml-0' : 'ml-auto flex-row-reverse'
+                      )}
+                    >
+                      <Avatar className="w-8 h-8 flex-shrink-0">
+                        <AvatarFallback className={cn(
+                          message.sender === 'agent'
+                            ? "bg-gradient-primary text-primary-foreground"
+                            : "bg-secondary text-foreground"
+                        )}>
+                          {message.sender === 'agent' ? <Bot className="w-4 h-4" /> : <User className="w-4 h-4" />}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className={cn(
+                        "rounded-2xl px-4 py-3",
+                        message.sender === 'agent'
+                          ? "bg-secondary text-foreground rounded-tl-none"
+                          : "bg-primary text-primary-foreground rounded-tr-none"
+                      )}>
+                        <p className="text-sm">{message.content}</p>
+                        <span className={cn(
+                          "text-xs mt-1 block",
+                          message.sender === 'agent' ? "text-muted-foreground" : "text-primary-foreground/70"
+                        )}>
+                          {message.timestamp}
+                        </span>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </ScrollArea>
+
+              {/* Message Input */}
+              <div className="p-4 border-t border-border/50">
+                <div className="flex items-center gap-3">
+                  <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                    <Paperclip className="w-5 h-5" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                    <Smile className="w-5 h-5" />
+                  </Button>
+                  <Input
+                    placeholder="Escribe un mensaje..."
+                    value={messageInput}
+                    onChange={(e) => setMessageInput(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button className="bg-gradient-primary hover:opacity-90">
+                    <Send className="w-5 h-5" />
+                  </Button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                <MessageSquare className="w-10 h-10 text-primary" />
+              </div>
+              <h3 className="text-xl font-semibold text-foreground mb-2">Selecciona una conversación</h3>
+              <p className="text-muted-foreground max-w-xs">
+                Haz clic en una conversación de la lista para ver los mensajes y responder.
+              </p>
             </div>
-          </div>
+          )}
         </div>
+
       </div>
     </DashboardLayout>
   );

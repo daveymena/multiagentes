@@ -12,8 +12,10 @@ import {
   ChevronRight,
   Smartphone,
   BarChart3,
-  Users
+  Users,
+  Package
 } from 'lucide-react';
+
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -27,7 +29,9 @@ const menuItems = [
   { icon: Workflow, label: 'Automatizaciones', path: '/automations' },
   { icon: BarChart3, label: 'Analíticas', path: '/analytics' },
   { icon: Users, label: 'Contactos', path: '/contacts' },
+  { icon: Package, label: 'Artículos', path: '/articles' },
   { icon: Settings, label: 'Configuración', path: '/settings' },
+
 ];
 
 export function Sidebar() {
@@ -63,7 +67,7 @@ export function Sidebar() {
             </motion.div>
           )}
         </AnimatePresence>
-        
+
         <Button
           variant="ghost"
           size="icon"
@@ -122,7 +126,7 @@ export function Sidebar() {
               {userInitials}
             </AvatarFallback>
           </Avatar>
-          
+
           <AnimatePresence mode="wait">
             {!collapsed && (
               <motion.div

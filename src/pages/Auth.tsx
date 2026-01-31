@@ -59,8 +59,8 @@ export default function Auth() {
         if (error) {
           toast({
             title: 'Error al iniciar sesión',
-            description: error.message === 'Invalid login credentials' 
-              ? 'Credenciales inválidas' 
+            description: error.message === 'Invalid login credentials'
+              ? 'Credenciales inválidas'
               : error.message,
             variant: 'destructive'
           });
@@ -145,7 +145,7 @@ export default function Auth() {
                 {isLogin ? 'Bienvenido de nuevo' : 'Crea tu cuenta'}
               </h1>
               <p className="text-muted-foreground mb-8">
-                {isLogin 
+                {isLogin
                   ? 'Ingresa tus credenciales para acceder a tu dashboard'
                   : 'Comienza a automatizar tus conversaciones de WhatsApp'
                 }
@@ -163,7 +163,7 @@ export default function Auth() {
                         placeholder="Tu nombre"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
-                        className="pl-10 h-12 bg-secondary/50 border-border focus:border-primary"
+                        className="pl-10 h-12 bg-background/50 border-white/10 focus:border-primary text-foreground placeholder:text-muted-foreground/50"
                       />
                     </div>
                     {errors.fullName && (
@@ -182,7 +182,7 @@ export default function Auth() {
                       placeholder="tu@email.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="pl-10 h-12 bg-secondary/50 border-border focus:border-primary"
+                      className="pl-10 h-12 bg-background/50 border-white/10 focus:border-primary text-foreground placeholder:text-muted-foreground/50"
                     />
                   </div>
                   {errors.email && (
@@ -200,7 +200,7 @@ export default function Auth() {
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="pl-10 pr-10 h-12 bg-secondary/50 border-border focus:border-primary"
+                      className="pl-10 pr-10 h-12 bg-background/50 border-white/10 focus:border-primary text-foreground placeholder:text-muted-foreground/50"
                     />
                     <button
                       type="button"
@@ -250,7 +250,7 @@ export default function Auth() {
       {/* Right side - Decorative */}
       <div className="hidden lg:flex flex-1 relative overflow-hidden bg-gradient-to-br from-sidebar via-sidebar-accent to-sidebar">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiMyMjI4MzMiIGZpbGwtb3BhY2l0eT0iMC4zIj48cGF0aCBkPSJNMzYgMzBoLTJ2MmgydjJoLTJ2Mmgydi0yaDJ2LTJoLTJ2LTJoMnYtMmgtMnYyem0tMiA0aC0ydjJoMnYtMnptMC04aC0ydjJoMnYtMnptNCAwdi0yaDJ2LTJoLTJ2MmgtMnYyaDJ6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-20" />
-        
+
         <div className="relative z-10 flex flex-col items-center justify-center p-12 text-center">
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}

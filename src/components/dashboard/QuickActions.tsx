@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion';
 import { Plus, Link2, Zap, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
+
 
 const actions = [
   {
@@ -8,7 +10,7 @@ const actions = [
     label: 'Crear Agente',
     description: 'Nuevo agente IA',
     color: 'from-green-500 to-emerald-600',
-    path: '/agents/new'
+    path: '/agents'
   },
   {
     icon: Link2,
@@ -22,7 +24,7 @@ const actions = [
     label: 'Automatización',
     description: 'Crear flujo',
     color: 'from-purple-500 to-pink-600',
-    path: '/automations/new'
+    path: '/automations'
   },
   {
     icon: FileText,
@@ -34,6 +36,8 @@ const actions = [
 ];
 
 export function QuickActions() {
+  const navigate = useNavigate();
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -49,6 +53,7 @@ export function QuickActions() {
           transition={{ duration: 0.3, delay: 0.1 * index }}
           whileHover={{ scale: 1.02, y: -2 }}
           whileTap={{ scale: 0.98 }}
+          onClick={() => navigate(action.path)}
           className="relative group p-5 rounded-2xl glass border border-border/50 text-left overflow-hidden hover:border-primary/30 transition-all duration-300"
         >
           {/* Gradient background on hover */}
@@ -56,7 +61,7 @@ export function QuickActions() {
             "absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-10 transition-opacity duration-500",
             action.color
           )} />
-          
+
           <div className="relative z-10">
             <div className={cn(
               "w-12 h-12 rounded-xl bg-gradient-to-br flex items-center justify-center mb-3 shadow-lg",
@@ -72,3 +77,4 @@ export function QuickActions() {
     </motion.div>
   );
 }
+

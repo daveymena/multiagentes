@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Search, Filter, Bot, MoreVertical, Play, Pause, Settings, Trash2, Sparkles } from 'lucide-react';
+import { Plus, Search, Filter, Bot, MoreVertical, Play, Pause, Settings, Trash2, Sparkles, Loader2 } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +30,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import axios from 'axios';
+import { toast } from 'sonner';
+
+const BACKEND_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://127.0.0.1:3001'
+  : `http://${window.location.hostname}:3001`;
+
 
 interface Agent {
   id: string;
@@ -41,54 +48,8 @@ interface Agent {
   conversations: number;
   responseRate: number;
   createdAt: string;
+  welcomeMessage: string;
 }
-
-const mockAgents: Agent[] = [
-  {
-    id: '1',
-    name: 'Agente de Ventas Pro',
-    description: 'Especializado en cerrar ventas y generar leads calificados',
-    type: 'sales',
-    status: 'active',
-    aiProvider: 'Lovable AI',
-    conversations: 1256,
-    responseRate: 98,
-    createdAt: '2024-01-15'
-  },
-  {
-    id: '2',
-    name: 'Soporte Técnico 24/7',
-    description: 'Resuelve dudas técnicas y problemas de los clientes',
-    type: 'support',
-    status: 'active',
-    aiProvider: 'Lovable AI',
-    conversations: 892,
-    responseRate: 95,
-    createdAt: '2024-01-20'
-  },
-  {
-    id: '3',
-    name: 'Asistente de Citas',
-    description: 'Agenda y gestiona citas con clientes',
-    type: 'services',
-    status: 'paused',
-    aiProvider: 'Groq',
-    conversations: 456,
-    responseRate: 92,
-    createdAt: '2024-02-01'
-  },
-  {
-    id: '4',
-    name: 'Promotor de Ofertas',
-    description: 'Envía promociones y ofertas especiales',
-    type: 'marketing',
-    status: 'inactive',
-    aiProvider: 'Lovable AI',
-    conversations: 234,
-    responseRate: 88,
-    createdAt: '2024-02-10'
-  }
-];
 
 const typeConfig = {
   sales: { label: 'Ventas', color: 'bg-green-500', bgLight: 'bg-green-500/10', textColor: 'text-green-500' },
@@ -105,13 +66,77 @@ const statusConfig = {
 };
 
 export default function Agents() {
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+
+  const [formData, setFormData] = useState({
+    name: '',
+    type: 'sales',
+    aiProvider: 'lovable_ai',
+    description: '',
+    welcomeMessage: ''
+  });
+
+  useEffect(() => {
+    fetchAgents();
+  }, []);
+
+  const fetchAgents = async () => {
+    try {
+      setIsLoading(true);
+      const response = await axios.get(`${BACKEND_URL}/api/agents`);
+      setAgents(response.data);
+    } catch (error) {
+      console.error('Error fetching agents:', error);
+      toast.error('Error al cargar los agentes');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setIsLoading(true);
+      await axios.post(`${BACKEND_URL}/api/agents`, formData);
+      toast.success('Agente creado correctamente');
+      setIsCreateOpen(false);
+      fetchAgents();
+      setFormData({
+        name: '',
+        type: 'sales',
+        aiProvider: 'lovable_ai',
+        description: '',
+        welcomeMessage: ''
+      });
+    } catch (error) {
+      console.error('Error creating agent:', error);
+      toast.error('Error al crear el agente');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await axios.delete(`${BACKEND_URL}/api/agents/${id}`);
+      toast.success('Agente eliminado');
+      fetchAgents();
+    } catch (error) {
+      toast.error('Error al eliminar agente');
+    }
+  };
+
+  const filteredAgents = agents.filter(agent =>
+    agent.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    agent.type?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
@@ -121,7 +146,7 @@ export default function Agents() {
               Mis Agentes
             </h1>
             <p className="text-muted-foreground">
-              Gestiona y configura tus agentes de IA
+              Gestiona y configura tus agentes de IA reales
             </p>
           </motion.div>
 
@@ -143,15 +168,24 @@ export default function Agents() {
                 </DialogDescription>
               </DialogHeader>
 
-              <form className="space-y-4 mt-4">
+              <form onSubmit={handleSubmit} className="space-y-4 mt-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Nombre del agente</Label>
-                  <Input id="name" placeholder="Ej: Agente de Ventas" />
+                  <Input
+                    id="name"
+                    placeholder="Ej: Agente de Ventas"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    required
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="type">Tipo de agente</Label>
-                  <Select>
+                  <Select
+                    value={formData.type}
+                    onValueChange={(value) => setFormData({ ...formData, type: value })}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecciona un tipo" />
                     </SelectTrigger>
@@ -167,7 +201,10 @@ export default function Agents() {
 
                 <div className="space-y-2">
                   <Label htmlFor="provider">Proveedor de IA</Label>
-                  <Select defaultValue="lovable_ai">
+                  <Select
+                    value={formData.aiProvider}
+                    onValueChange={(value) => setFormData({ ...formData, aiProvider: value })}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -180,19 +217,23 @@ export default function Agents() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="prompt">Prompt del sistema</Label>
-                  <Textarea 
-                    id="prompt" 
+                  <Label htmlFor="prompt">Descripción / Instrucciones</Label>
+                  <Textarea
+                    id="prompt"
                     placeholder="Describe el comportamiento y personalidad del agente..."
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     rows={4}
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="welcome">Mensaje de bienvenida</Label>
-                  <Input 
-                    id="welcome" 
+                  <Input
+                    id="welcome"
                     placeholder="Ej: ¡Hola! ¿En qué puedo ayudarte hoy?"
+                    value={formData.welcomeMessage}
+                    onChange={(e) => setFormData({ ...formData, welcomeMessage: e.target.value })}
                   />
                 </div>
 
@@ -200,8 +241,8 @@ export default function Agents() {
                   <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
                     Cancelar
                   </Button>
-                  <Button type="submit" className="bg-gradient-primary hover:opacity-90">
-                    Crear Agente
+                  <Button type="submit" disabled={isLoading} className="bg-gradient-primary hover:opacity-90">
+                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Crear Agente'}
                   </Button>
                 </div>
               </form>
@@ -209,7 +250,6 @@ export default function Agents() {
           </Dialog>
         </div>
 
-        {/* Search and Filter */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -225,127 +265,93 @@ export default function Agents() {
               className="pl-10"
             />
           </div>
-          <Button variant="outline">
-            <Filter className="w-4 h-4 mr-2" />
-            Filtros
-          </Button>
         </motion.div>
 
-        {/* Agents Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {mockAgents.map((agent, index) => (
-            <motion.div
-              key={agent.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 * index }}
-              className="group relative rounded-2xl glass border border-border/50 p-6 hover:border-primary/30 transition-all duration-300"
-            >
-              {/* Status indicator */}
-              <div className="absolute top-4 right-4">
-                <Badge variant="outline" className={cn("text-xs", statusConfig[agent.status].className)}>
-                  {statusConfig[agent.status].label}
-                </Badge>
-              </div>
-
-              {/* Agent Avatar */}
-              <div className="flex items-start gap-4 mb-4">
-                <div className="relative">
-                  <Avatar className="w-14 h-14 border-2 border-primary/20">
-                    <AvatarFallback className="bg-gradient-primary text-primary-foreground">
-                      <Bot className="w-7 h-7" />
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className={cn(
-                    "absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-card",
-                    agent.status === 'active' ? 'bg-success' : 
-                    agent.status === 'paused' ? 'bg-warning' : 'bg-muted-foreground'
-                  )} />
+        {isLoading && agents.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
+            <p className="text-muted-foreground">Cargando agentes...</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {filteredAgents.map((agent, index) => (
+              <motion.div
+                key={agent.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 * index }}
+                className="group relative rounded-2xl glass border border-border/50 p-6 hover:border-primary/30 transition-all duration-300"
+              >
+                <div className="absolute top-4 right-4">
+                  <Badge variant="outline" className={cn("text-xs", statusConfig[agent.status]?.className)}>
+                    {statusConfig[agent.status]?.label || agent.status}
+                  </Badge>
                 </div>
 
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-foreground truncate">{agent.name}</h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className={cn(
-                      "text-xs font-medium px-2 py-0.5 rounded-full",
-                      typeConfig[agent.type].bgLight,
-                      typeConfig[agent.type].textColor
-                    )}>
-                      {typeConfig[agent.type].label}
-                    </span>
-                    <span className="text-xs text-muted-foreground">{agent.aiProvider}</span>
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="relative">
+                    <Avatar className="w-14 h-14 border-2 border-primary/20">
+                      <AvatarFallback className="bg-gradient-primary text-primary-foreground">
+                        <Bot className="w-7 h-7" />
+                      </AvatarFallback>
+                    </Avatar>
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-foreground truncate">{agent.name}</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={cn(
+                        "text-xs font-medium px-2 py-0.5 rounded-full",
+                        typeConfig[agent.type]?.bgLight,
+                        typeConfig[agent.type]?.textColor
+                      )}>
+                        {typeConfig[agent.type]?.label || agent.type}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                {agent.description}
-              </p>
+                <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                  {agent.description}
+                </p>
 
-              {/* Stats */}
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="p-3 rounded-lg bg-secondary/50">
-                  <p className="text-2xl font-bold text-foreground">{agent.conversations.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">Conversaciones</p>
-                </div>
-                <div className="p-3 rounded-lg bg-secondary/50">
-                  <p className="text-2xl font-bold text-foreground">{agent.responseRate}%</p>
-                  <p className="text-xs text-muted-foreground">Tasa de respuesta</p>
-                </div>
-              </div>
+                <div className="flex items-center justify-between pt-4 border-t border-border/50">
+                  <Button variant="outline" size="sm">
+                    <Settings className="w-4 h-4 mr-2" />
+                    Configurar
+                  </Button>
 
-              {/* Actions */}
-              <div className="flex items-center justify-between pt-4 border-t border-border/50">
-                <Button variant="outline" size="sm">
-                  <Settings className="w-4 h-4 mr-2" />
-                  Configurar
-                </Button>
-                
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreVertical className="w-4 h-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {agent.status === 'active' ? (
-                      <DropdownMenuItem>
-                        <Pause className="w-4 h-4 mr-2" />
-                        Pausar
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreVertical className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleDelete(agent.id)} className="text-destructive">
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Eliminar
                       </DropdownMenuItem>
-                    ) : (
-                      <DropdownMenuItem>
-                        <Play className="w-4 h-4 mr-2" />
-                        Activar
-                      </DropdownMenuItem>
-                    )}
-                    <DropdownMenuItem className="text-destructive">
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Eliminar
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </motion.div>
-          ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </motion.div>
+            ))}
 
-          {/* Add New Agent Card */}
-          <motion.button
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            onClick={() => setIsCreateOpen(true)}
-            className="rounded-2xl border-2 border-dashed border-border hover:border-primary/50 p-6 flex flex-col items-center justify-center gap-4 min-h-[300px] transition-all duration-300 group"
-          >
-            <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-              <Plus className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors" />
-            </div>
-            <div className="text-center">
-              <p className="font-semibold text-foreground">Crear nuevo agente</p>
-              <p className="text-sm text-muted-foreground">Configura un agente IA personalizado</p>
-            </div>
-          </motion.button>
-        </div>
+            <motion.button
+              onClick={() => setIsCreateOpen(true)}
+              className="rounded-2xl border-2 border-dashed border-border hover:border-primary/50 p-6 flex flex-col items-center justify-center gap-4 min-h-[250px] transition-all duration-300 group"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                <Plus className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors" />
+              </div>
+              <div className="text-center">
+                <p className="font-semibold text-foreground">Crear nuevo agente</p>
+                <p className="text-sm text-muted-foreground">Configura un agente IA real</p>
+              </div>
+            </motion.button>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );
